@@ -1,0 +1,77 @@
+<!-- my-project/assets/index.html -->
+<!DOCTYPE html>
+<html>
+  <body>
+    <script src="../dist/app.js"></script>
+<style>
+.game {
+    display: flex;
+    flex-direction: column;
+    width: 400px; 
+    height: 400px; 
+}
+.row {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+}
+.light {
+    flex: 1 1 auto;
+    border: 10px solid #222;
+    background-color: black;
+}
+.on { 
+    background-color: #aa6; 
+    border-color: #884
+}
+* {
+    padding: 0;
+    margin: 0;
+}
+
+.tile {
+    height: 50px;
+    width: 50px;
+    background-color: #FFCE9E;
+    box-sizing: border-box;
+}
+.bottom-edge-piece, .left-edge-piece {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: monospace;
+}
+.bottom-edge-piece {
+    height: 25px;
+    width: 50px;
+}
+.left-edge-piece {
+    height: 50px;
+    width: 25px;
+}
+.corner {
+    height: 25px;
+    width: 25px;
+}
+.tile > img {
+    height: 100%;
+    width: 100%;
+}
+.chess-row, .bottom-edge {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+}
+.chess-row:nth-child(odd) > .tile:nth-child(even) {
+    background-color: #D18B47;
+}
+.chess-row:nth-child(even) > .tile:nth-child(odd) {
+    background-color: #D18B47;
+}
+.tile.selected {
+    background-color: #88d !important;
+}
+</style>
+  </body>
+</html>
+
