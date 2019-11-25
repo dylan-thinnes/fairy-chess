@@ -109,6 +109,7 @@ data QuickMoveSpec location piece
               (QuickMoveSpec location piece)
     | Choice (Array (QuickMoveSpec location piece))
     | Sequence (QuickMoveSpec location piece) (QuickMoveSpec location piece)
+    | Optionally (QuickMoveSpec location piece)
     | Repeat (QuickMoveSpec location piece)
 
 while :: forall location piece. Pre location piece -> QuickMoveSpec location piece -> QuickMoveSpec location piece
