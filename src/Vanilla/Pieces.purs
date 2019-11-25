@@ -74,6 +74,8 @@ instance vanillaPiece :: IsPiece Vanilla Name Team D2 where
                     Rook   -> rook self
                     Bishop -> bishop self
                     Queen  -> queen self
+                    Knight -> knight self
+                    King   -> king self
                     _      -> Finally [] (pure true)
 
 pawn :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
@@ -168,3 +170,13 @@ bishop self@(Piece name team id)
 queen :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
 queen self@(Piece name team id)
         = Choice [rook self, bishop self]
+
+knight :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
+knight self@(Piece name team id)
+        = Choice $ map (passiveOrAttackMove self <<< Relative) 
+                 $ octopize $ D2 { x: 2, y: 1 }
+
+king :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
+king self@(Piece name team id)
+        = Choice $ map (passiveOrAttackMove self <<< Relative) 
+                 $ (octopize $ D2 { x: 1, y: 1 }) <> (octopize $ D2 { x: 1, y: 0 })
