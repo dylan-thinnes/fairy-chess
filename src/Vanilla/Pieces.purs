@@ -79,10 +79,8 @@ pawn :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
 pawn self@(Piece name team id)
        = Sequence
            (Choice
-             [ Require -- One step forward
-                 (isNothing <$> occupiedBy (Relative $ D2 { x: 0, y: teamDirection team * 1 }))
-                 $ Finally [Move self $ Relative $ D2 { x: 0, y: teamDirection team * 1 }]
-                           (pure true)
+             [ -- One step forward
+               passiveMoveOnly self (Relative $ D2 { x: 0, y: teamDirection team * 1 })
              , Require -- Two steps forward
                  ( do
                      between <- occupiedBy (Relative $ D2 { x: 0, y: teamDirection team * 1 })
@@ -92,26 +90,8 @@ pawn self@(Piece name team id)
                  )
                  $ Finally [Move self $ Relative $ D2 { x: 0, y: teamDirection team * 2 }]
                            (pure true)
-             , Require -- Positive x diagonal capture
-                 ( do
-                     mp <- occupiedBy (Relative $ D2 { x: 1, y: teamDirection team * 1 })
-                     case mp of
-                          Just (Piece _ t _) -> pure $ t /= team
-                          _                  -> pure false
-                 )
-                 $ Finally [Clear $ Relative $ D2 { x: 1, y: teamDirection team * 1 }
-                           ,Move self $ Relative $ D2 { x: 1, y: teamDirection team * 1 }
-                           ]
-                           (pure true)
-             , Require -- Negative x diagonal capture
-                 ( do
-                     (Piece _ t _) <- try =<< occupiedBy (Relative $ D2 { x: -1, y: teamDirection team * 1 })
-                     pure $ t /= team
-                 )
-                 $ Finally [Clear $ Relative $ D2 { x: -1, y: teamDirection team * 1 }
-                           ,Move self $ Relative $ D2 { x: -1, y: teamDirection team * 1 }
-                           ]
-                           (pure true)
+             , attackMoveOnly self (Relative $ D2 { x:  1, y: teamDirection team * 1 })
+             , attackMoveOnly self (Relative $ D2 { x: -1, y: teamDirection team * 1 })
              , Require -- Positive x en passant capture
                  ( do
                      -- Check there is an immediately adjacent pawn of the opposing team
@@ -167,10 +147,10 @@ pawn self@(Piece name team id)
                            ]
                            (pure true)
              ])
-           (Require
+           (Require -- Promote piece after any move if on the maximum rank
               ( do
                   (D2 { x, y }) <- atPiece self
-                  pure $ x == if team == White then 8 else 1
+                  pure $ x == if team == White then 8 else 1 -- TODO: Query for board bounds
               )
               $ Finally [Promote self $ map (\t -> Piece t team (-1)) [Queen, Rook, Bishop, Knight]]
                         (pure true)
