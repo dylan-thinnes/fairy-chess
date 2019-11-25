@@ -110,6 +110,23 @@ data QuickMoveSpec location piece
     | Sequence (QuickMoveSpec location piece) (QuickMoveSpec location piece)
     | Repeat (QuickMoveSpec location piece)
 
+while :: forall location piece. Pre location piece -> QuickMoveSpec location piece -> QuickMoveSpec location piece
+while cond action = Repeat (Require cond action)
+
+locEmpty :: forall location piece. (Eq piece) => AbsOrRel location -> Pre location piece
+locEmpty loc = (_ == Nothing) <$> occupiedBy loc
+
+repeatMove :: forall location piece. (Eq piece) => piece -> AbsOrRel location -> QuickMoveSpec location piece
+repeatMove self location = Repeat $ passiveMoveOnly self location
+
+passiveMoveOnly :: forall location piece. (Eq piece) => piece -> AbsOrRel location -> QuickMoveSpec location piece
+passiveMoveOnly self location
+    = Require (locEmpty location) (Finally [Move self location] $ pure true)
+
+attackMoveOnly :: forall location name team. (Eq team) => Piece name team -> AbsOrRel location -> QuickMoveSpec location (Piece name team)
+attackMoveOnly self location = Require (occupiedBy location >>= try >>= \occupant -> pure $ team occupant /= team self)
+                                       (Finally [Clear location, Move self location] $ pure true)
+
 data GameState location piece board
     = GameState { history :: (Array (GameStep location piece))
                 , state :: Map piece location
