@@ -126,8 +126,19 @@ passiveMoveOnly self location
     = Require (locEmpty location) (Finally [Move self location] $ pure true)
 
 attackMoveOnly :: forall location name team. (Eq team) => Piece name team -> AbsOrRel location -> QuickMoveSpec location (Piece name team)
-attackMoveOnly self location = Require (occupiedBy location >>= try >>= \occupant -> pure $ team occupant /= team self)
-                                       (Finally [Clear location, Move self location] $ pure true)
+attackMoveOnly self location 
+    = Require (occupiedBy location >>= try >>= \occupant -> pure $ team occupant /= team self)
+              (Finally [Clear location, Move self location] $ pure true)
+
+passiveOrAttackMove :: forall location name team. (Eq team) => Piece name team -> AbsOrRel location -> QuickMoveSpec location (Piece name team)
+passiveOrAttackMove self location 
+    = Finally [Clear location, Move self location] $ pure true
+
+repeatMoveUntilMaybeAttack :: forall location name team. 
+                              (Eq team) => (Eq name) => 
+                              Piece name team -> AbsOrRel location -> QuickMoveSpec location (Piece name team)
+repeatMoveUntilMaybeAttack self location
+    = Sequence (repeatMove self location) $ Optionally (attackMoveOnly self location)
 
 data GameState location piece board
     = GameState { history :: (Array (GameStep location piece))
