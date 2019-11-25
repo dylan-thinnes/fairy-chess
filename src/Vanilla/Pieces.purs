@@ -159,27 +159,11 @@ pawn self@(Piece name team id)
 
 rook :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
 rook self@(Piece name team id)
-       = Choice [Sequence (repeatMove self     (Relative $ D2 { x:  1, y:  0 }))
-                          (attackMoveOnly self (Relative $ D2 { x:  1, y:  0 }))
-                ,Sequence (repeatMove self     (Relative $ D2 { x: -1, y:  0 }))
-                          (attackMoveOnly self (Relative $ D2 { x: -1, y:  0 }))
-                ,Sequence (repeatMove self     (Relative $ D2 { x:  0, y:  1 }))
-                          (attackMoveOnly self (Relative $ D2 { x:  0, y:  1 }))
-                ,Sequence (repeatMove self     (Relative $ D2 { x:  0, y: -1 }))
-                          (attackMoveOnly self (Relative $ D2 { x:  0, y: -1 }))
-                ]
+       = Choice $ map (repeatMoveUntilMaybeAttack self <<< Relative) $ octopize $ D2 { x: 1, y: 0 }
 
 bishop :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
 bishop self@(Piece name team id)
-       = Choice [Sequence (repeatMove self     (Relative $ D2 { x:  1, y:  1 }))
-                          (attackMoveOnly self (Relative $ D2 { x:  1, y:  1 }))
-                ,Sequence (repeatMove self     (Relative $ D2 { x: -1, y:  1 }))
-                          (attackMoveOnly self (Relative $ D2 { x: -1, y:  1 }))
-                ,Sequence (repeatMove self     (Relative $ D2 { x:  1, y: -1 }))
-                          (attackMoveOnly self (Relative $ D2 { x:  1, y: -1 }))
-                ,Sequence (repeatMove self     (Relative $ D2 { x: -1, y: -1 }))
-                          (attackMoveOnly self (Relative $ D2 { x: -1, y: -1 }))
-                ]
+       = Choice $ map (repeatMoveUntilMaybeAttack self <<< Relative) $ octopize $ D2 { x: 1, y: 1 }
 
 queen :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
 queen self@(Piece name team id)
