@@ -170,46 +170,14 @@ rook self@(Piece name team id)
 
 bishop :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
 bishop self@(Piece name team id)
-       = Choice [Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: 1, y: 1 }) <#> isNothing)
-                                  (Finally [Move self $ Relative $ D2 { x: 1, y: 1 }] $ pure true)))
-                          (Require (do
-                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: 1, y: 1 })
-                                     pure $ t /= team
-                                   )
-                                   (Finally [Clear $ Relative $ D2 { x: 1, y: 1 }
-                                            ,Move self $ Relative $ D2 { x: 1, y: 1 }
-                                            ]
-                                            (pure true)))
-                ,Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: 1, y: -1 }) <#> isNothing)
-                                  (Finally [Move self $ Relative $ D2 { x: 1, y: -1 }] $ pure true)))
-                          (Require (do
-                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: 1, y: -1 })
-                                     pure $ t /= team
-                                   )
-                                   (Finally [Clear $ Relative $ D2 { x: 1, y: -1 }
-                                            ,Move self $ Relative $ D2 { x: 1, y: -1 }
-                                            ]
-                                            (pure true)))
-                ,Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: -1, y: 1 }) <#> isNothing)
-                                  (Finally [Move self $ Relative $ D2 { x: -1, y: 1 }] $ pure true)))
-                          (Require (do
-                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: -1, y: 1 })
-                                     pure $ t /= team
-                                   )
-                                   (Finally [Clear $ Relative $ D2 { x: -1, y: 1 }
-                                            ,Move self $ Relative $ D2 { x: -1, y: 1 }
-                                            ]
-                                            (pure true)))
-                ,Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: -1, y: -1 }) <#> isNothing)
-                                  (Finally [Move self $ Relative $ D2 { x: -1, y: -1 }] $ pure true))) 
-                          (Require (do
-                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: -1, y: -1 })
-                                     pure $ t /= team
-                                   )
-                                   (Finally [Clear $ Relative $ D2 { x: -1, y: -1 }
-                                            ,Move self $ Relative $ D2 { x: -1, y: -1 }
-                                            ]
-                                            (pure true)))
+       = Choice [Sequence (repeatMove self     (Relative $ D2 { x:  1, y:  1 }))
+                          (attackMoveOnly self (Relative $ D2 { x:  1, y:  1 }))
+                ,Sequence (repeatMove self     (Relative $ D2 { x: -1, y:  1 }))
+                          (attackMoveOnly self (Relative $ D2 { x: -1, y:  1 }))
+                ,Sequence (repeatMove self     (Relative $ D2 { x:  1, y: -1 }))
+                          (attackMoveOnly self (Relative $ D2 { x:  1, y: -1 }))
+                ,Sequence (repeatMove self     (Relative $ D2 { x: -1, y: -1 }))
+                          (attackMoveOnly self (Relative $ D2 { x: -1, y: -1 }))
                 ]
 
 queen :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
