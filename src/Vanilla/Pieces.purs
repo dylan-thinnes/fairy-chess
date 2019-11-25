@@ -12,6 +12,7 @@ import Control.Monad.Loops
 import Control.MonadZero (guard)
 
 data Name = Pawn | Rook | Knight | Bishop | King | Queen
+derive instance eqName :: Eq Name
 
 isPawn :: Name -> Boolean
 isPawn = case _ of
@@ -65,105 +66,204 @@ instance vanillaPiece :: IsPiece Vanilla Name Team D2 where
           , Tuple (Piece Rook   Black 2) $ D2 { x: 8, y: 8 }
           ]
 
-    toMoveSpec _ self@(Piece name team i)
+    toMoveSpec _ self@(Piece name team id)
         = if isPawn name
-          then Sequence
-                 (Choice
-                   [ Require -- One step forward
-                       (isNothing <$> occupiedBy (Relative $ D2 { x: 0, y: teamDirection team * 1 }))
-                       $ Finally [Move self $ Relative $ D2 { x: 0, y: teamDirection team * 1 }]
-                                 (pure true)
-                   , Require -- Two steps forward
-                       ( do
-                           between <- occupiedBy (Relative $ D2 { x: 0, y: teamDirection team * 1 })
-                           occupant <- occupiedBy (Relative $ D2 { x: 0, y: teamDirection team * 2 })
-                           notMoved <- neverMoved self
-                           pure $ between == Nothing && occupant == Nothing && notMoved
-                       )
-                       $ Finally [Move self $ Relative $ D2 { x: 0, y: teamDirection team * 2 }]
-                                 (pure true)
-                   , Require -- Positive x diagonal capture
-                       ( do
-                           mp <- occupiedBy (Relative $ D2 { x: 1, y: teamDirection team * 1 })
-                           case mp of
-                                Just (Piece _ t _) -> pure $ t /= team
-                                _                  -> pure false
-                       )
-                       $ Finally [Clear $ Relative $ D2 { x: 1, y: teamDirection team * 1 }
-                                 ,Move self $ Relative $ D2 { x: 1, y: teamDirection team * 1 }
-                                 ]
-                                 (pure true)
-                   , Require -- Negative x diagonal capture
-                       ( do
-                           (Piece _ t _) <- try =<< occupiedBy (Relative $ D2 { x: -1, y: teamDirection team * 1 })
-                           pure $ t /= team
-                       )
-                       $ Finally [Clear $ Relative $ D2 { x: -1, y: teamDirection team * 1 }
-                                 ,Move self $ Relative $ D2 { x: -1, y: teamDirection team * 1 }
-                                 ]
-                                 (pure true)
-                   , Require -- Positive x en passant capture
-                       ( do
-                           -- Check there is an immediately adjacent pawn of the opposing team
-                           p@(Piece n t _) <- try =<< occupiedBy (Relative $ D2 { x: 1, y: 0 })
-                           guard $ isPawn n && t /= team
+          then pawn self
+          else case name of
+                    Rook   -> rook self
+                    Bishop -> bishop self
+                    Queen  -> queen self
+                    _      -> Finally [] (pure true)
 
-                           totalHist <- movementHistoryComplete
-                           pieceHist <- movementHistoryPiece p
-
-                           -- Check that the pawn has only ever made one action
-                           guard $ Array.length pieceHist == 2
-                           (MovementEvent p0@(D2 { x: x0, y: y0 }) _ _) <- try $ Array.index pieceHist 0
-                           (MovementEvent p1@(D2 { x: x1, y: y1 }) _ i) <- try $ Array.index pieceHist 1
-
-                           -- Check that the opposing pawn meets other criteria
-                           -- for being en-passant-capturable
-                           pure $ x0 == x1 -- Is the opposing pawn on the same column?
-                               && y1 == (y0 + teamDirection t * 2) -- Did the opposing pawn double jump from its starting position?
-                               && i == Array.length totalHist -- Is the last movement event of the opposing pawn also the last movement in the game overall
-                       )
-                       $ Finally [Clear $ Relative $ D2 { x: 1, y: 0 }
-                                 ,Move self $ Relative $ D2 { x: 1, y: teamDirection team * 1 }
-                                 ]
-                                 (pure true)
-                   ])
-                 (Require
-                    ( do
-                        (D2 { x, y }) <- atPiece self
-                        pure $ x == if team == White then 8 else 1
-                    )
-                    $ Finally [Promote self $ map (\t -> Piece t team (-1)) [Queen, Rook, Bishop, Knight]]
-                              (pure true)
+pawn :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
+pawn self@(Piece name team id)
+       = Sequence
+           (Choice
+             [ Require -- One step forward
+                 (isNothing <$> occupiedBy (Relative $ D2 { x: 0, y: teamDirection team * 1 }))
+                 $ Finally [Move self $ Relative $ D2 { x: 0, y: teamDirection team * 1 }]
+                           (pure true)
+             , Require -- Two steps forward
+                 ( do
+                     between <- occupiedBy (Relative $ D2 { x: 0, y: teamDirection team * 1 })
+                     occupant <- occupiedBy (Relative $ D2 { x: 0, y: teamDirection team * 2 })
+                     notMoved <- neverMoved self
+                     pure $ between == Nothing && occupant == Nothing && notMoved
                  )
-          else Finally [] (pure true)
-        {- = if isPawn name
-             then Sequence 
-                    (Choice
-                      [ Require [Unoccupied $ Relative $ D2 { x: 0, y: teamDirection team * 1 }] 
-                          $ Finally [Move self $ Relative $ D2 { x: 0, y: teamDirection team * 1 }] []
-                      , Require [Unoccupied $ Relative $ D2 { x: 0, y: teamDirection team * 2 }
-                                ,NeverMoved self
-                                ]
-                          $ Finally [Move self $ Relative $ D2 { x: 0, y: teamDirection team * 2 }] []
-                      , Require [OccupiedBy (Relative $ D2 { x: 1, y: teamDirection team * 1 }) 
-                                            (\(Piece _ t _) -> t /= team)
-                                ]
-                          $ Finally [Move self $ Relative $ D2 { x: 1, y: teamDirection team * 1 }] []
-                      , Require [OccupiedBy (Relative $ D2 { x: -1, y: teamDirection team * 1 }) 
-                                            (\(Piece _ t _) -> t /= team)
-                                ]
-                          $ Finally [Move self $ Relative $ D2 { x: -1, y: teamDirection team * 1 }] []
-                      , Require [OccupiedBy (Relative $ D2 { x: -1, y: 0 }) 
-                                            (\(Piece n t _) -> t /= team && isPawn n)
-                                ]
-                          $ Finally [Move self $ Relative $ D2 { x: -1, y: teamDirection team * 1 }] []
-                      , Require [OccupiedBy (Relative $ D2 { x: 1, y: 0 }) 
-                                            (\(Piece n t _) -> t /= team && isPawn n)
-                                ]
-                          $ Finally [Move self $ Relative $ D2 { x: 1, y: teamDirection team * 1 }] []
-                      ])
-                    (Require [AtPiece self (\(D2 { x, y }) -> x == if team == White then 8 else 1)] 
-                      $ Finally [Promote self $ map (\t -> Piece t team (-1)) [Queen, Rook, Bishop, Knight]]
-                                []
-                    )
-             else case name of _ -> Finally [] [] -}
+                 $ Finally [Move self $ Relative $ D2 { x: 0, y: teamDirection team * 2 }]
+                           (pure true)
+             , Require -- Positive x diagonal capture
+                 ( do
+                     mp <- occupiedBy (Relative $ D2 { x: 1, y: teamDirection team * 1 })
+                     case mp of
+                          Just (Piece _ t _) -> pure $ t /= team
+                          _                  -> pure false
+                 )
+                 $ Finally [Clear $ Relative $ D2 { x: 1, y: teamDirection team * 1 }
+                           ,Move self $ Relative $ D2 { x: 1, y: teamDirection team * 1 }
+                           ]
+                           (pure true)
+             , Require -- Negative x diagonal capture
+                 ( do
+                     (Piece _ t _) <- try =<< occupiedBy (Relative $ D2 { x: -1, y: teamDirection team * 1 })
+                     pure $ t /= team
+                 )
+                 $ Finally [Clear $ Relative $ D2 { x: -1, y: teamDirection team * 1 }
+                           ,Move self $ Relative $ D2 { x: -1, y: teamDirection team * 1 }
+                           ]
+                           (pure true)
+             , Require -- Positive x en passant capture
+                 ( do
+                     -- Check there is an immediately adjacent pawn of the opposing team
+                     p@(Piece n t _) <- try =<< occupiedBy (Relative $ D2 { x: 1, y: 0 })
+                     guard $ isPawn n && t /= team
+
+                     totalHist <- movementHistoryComplete
+                     pieceHist <- movementHistoryPiece p
+
+                     -- Check that the pawn has only ever made one action
+                     guard $ Array.length pieceHist == 2
+                     (MovementEvent p0@(D2 { x: x0, y: y0 }) _ _) <- try $ Array.index pieceHist 0
+                     (MovementEvent p1@(D2 { x: x1, y: y1 }) _ i) <- try $ Array.index pieceHist 1
+
+                     -- Check that the opposing pawn meets other criteria
+                     -- for being en-passant-capturable
+                            -- Is the opposing pawn on the same column?
+                     pure $ x0 == x1
+                            -- Did the opposing pawn double jump from its starting position?
+                         && y1 == (y0 + teamDirection t * 2)
+                            -- Is the last movement event of the opposing pawn also the last movement in the game overall
+                         && i == Array.length totalHist
+                 )
+                 $ Finally [Clear $ Relative $ D2 { x: 1, y: 0 }
+                           ,Move self $ Relative $ D2 { x: 1, y: teamDirection team * 1 }
+                           ]
+                           (pure true)
+             , Require -- Negative x en passant capture
+                 ( do
+                     -- Check there is an immediately adjacent pawn of the opposing team
+                     p@(Piece n t _) <- try =<< occupiedBy (Relative $ D2 { x: -1, y: 0 })
+                     guard $ isPawn n && t /= team
+
+                     totalHist <- movementHistoryComplete
+                     pieceHist <- movementHistoryPiece p
+
+                     -- Check that the pawn has only ever made one action
+                     guard $ Array.length pieceHist == 2
+                     (MovementEvent p0@(D2 { x: x0, y: y0 }) _ _) <- try $ Array.index pieceHist 0
+                     (MovementEvent p1@(D2 { x: x1, y: y1 }) _ i) <- try $ Array.index pieceHist 1
+
+                     -- Check that the opposing pawn meets other criteria
+                     -- for being en-passant-capturable
+                            -- Is the opposing pawn on the same column?
+                     pure $ x0 == x1
+                            -- Did the opposing pawn double jump from its starting position?
+                         && y1 == (y0 + teamDirection t * 2)
+                            -- Is the last movement event of the opposing pawn also the last movement in the game overall
+                         && i == Array.length totalHist
+                 )
+                 $ Finally [Clear $ Relative $ D2 { x: -1, y: 0 }
+                           ,Move self $ Relative $ D2 { x: -1, y: teamDirection team * 1 }
+                           ]
+                           (pure true)
+             ])
+           (Require
+              ( do
+                  (D2 { x, y }) <- atPiece self
+                  pure $ x == if team == White then 8 else 1
+              )
+              $ Finally [Promote self $ map (\t -> Piece t team (-1)) [Queen, Rook, Bishop, Knight]]
+                        (pure true)
+           )
+
+rook :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
+rook self@(Piece name team id)
+       = Choice [Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: 1, y: 0 }) <#> isNothing)
+                                  (Finally [Move self $ Relative $ D2 { x: 1, y: 0 }] $ pure true)))
+                          (Require (do
+                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: 1, y: 0 })
+                                     pure $ t /= team
+                                   )
+                                   (Finally [Clear $ Relative $ D2 { x: 1, y: 0 }
+                                            ,Move self $ Relative $ D2 { x: 1, y: 0 }
+                                            ]
+                                            (pure true)))
+                ,Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: -1, y: 0 }) <#> isNothing)
+                                  (Finally [Move self $ Relative $ D2 { x: -1, y: 0 }] $ pure true)))
+                          (Require (do
+                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: -1, y: 0 })
+                                     pure $ t /= team
+                                   )
+                                   (Finally [Clear $ Relative $ D2 { x: -1, y: 0 }
+                                            ,Move self $ Relative $ D2 { x: -1, y: 0 }
+                                            ]
+                                            (pure true)))
+                ,Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: 0, y: 1 }) <#> isNothing)
+                                  (Finally [Move self $ Relative $ D2 { x: 0, y: 1 }] $ pure true)))
+                          (Require (do
+                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: 0, y: 1 })
+                                     pure $ t /= team
+                                   )
+                                   (Finally [Clear $ Relative $ D2 { x: 0, y: 1 }
+                                            ,Move self $ Relative $ D2 { x: 0, y: 1 }
+                                            ]
+                                            (pure true)))
+                ,Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: 0, y: -1 }) <#> isNothing)
+                                  (Finally [Move self $ Relative $ D2 { x: 0, y: -1 }] $ pure true))) 
+                          (Require (do
+                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: 0, y: -1 })
+                                     pure $ t /= team
+                                   )
+                                   (Finally [Clear $ Relative $ D2 { x: 0, y: -1 }
+                                            ,Move self $ Relative $ D2 { x: 0, y: -1 }
+                                            ]
+                                            (pure true)))
+                ]
+
+bishop :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
+bishop self@(Piece name team id)
+       = Choice [Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: 1, y: 1 }) <#> isNothing)
+                                  (Finally [Move self $ Relative $ D2 { x: 1, y: 1 }] $ pure true)))
+                          (Require (do
+                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: 1, y: 1 })
+                                     pure $ t /= team
+                                   )
+                                   (Finally [Clear $ Relative $ D2 { x: 1, y: 1 }
+                                            ,Move self $ Relative $ D2 { x: 1, y: 1 }
+                                            ]
+                                            (pure true)))
+                ,Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: 1, y: -1 }) <#> isNothing)
+                                  (Finally [Move self $ Relative $ D2 { x: 1, y: -1 }] $ pure true)))
+                          (Require (do
+                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: 1, y: -1 })
+                                     pure $ t /= team
+                                   )
+                                   (Finally [Clear $ Relative $ D2 { x: 1, y: -1 }
+                                            ,Move self $ Relative $ D2 { x: 1, y: -1 }
+                                            ]
+                                            (pure true)))
+                ,Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: -1, y: 1 }) <#> isNothing)
+                                  (Finally [Move self $ Relative $ D2 { x: -1, y: 1 }] $ pure true)))
+                          (Require (do
+                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: -1, y: 1 })
+                                     pure $ t /= team
+                                   )
+                                   (Finally [Clear $ Relative $ D2 { x: -1, y: 1 }
+                                            ,Move self $ Relative $ D2 { x: -1, y: 1 }
+                                            ]
+                                            (pure true)))
+                ,Sequence (Repeat (Require (occupiedBy (Relative $ D2 { x: -1, y: -1 }) <#> isNothing)
+                                  (Finally [Move self $ Relative $ D2 { x: -1, y: -1 }] $ pure true))) 
+                          (Require (do
+                                     (Piece n t i) <- try =<< occupiedBy (Relative $ D2 { x: -1, y: -1 })
+                                     pure $ t /= team
+                                   )
+                                   (Finally [Clear $ Relative $ D2 { x: -1, y: -1 }
+                                            ,Move self $ Relative $ D2 { x: -1, y: -1 }
+                                            ]
+                                            (pure true)))
+                ]
+
+queen :: (Piece Name Team) -> QuickMoveSpec D2 (Piece Name Team)
+queen self@(Piece name team id)
+        = Choice [rook self, bishop self]
