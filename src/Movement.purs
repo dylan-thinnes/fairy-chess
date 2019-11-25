@@ -123,6 +123,12 @@ data MoveTrace location piece
     = MoveTrace (Array (QuickMoveSpec location piece))
 
 data Piece name team = Piece name team Int
+name :: forall name team. Piece name team -> name
+name (Piece n t i) = n
+team :: forall name team. Piece name team -> team
+team (Piece n t i) = t
+id :: forall name team. Piece name team -> Int
+id (Piece n t i) = i
 
 instance eqPiece :: (Eq name, Eq team) => Eq (Piece name team) where
     eq (Piece n1 t1 i) (Piece n2 t2 j) = n1 == n2 && t1 == t2 && i == j
