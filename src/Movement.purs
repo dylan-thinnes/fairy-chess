@@ -9,44 +9,15 @@ import Data.Map (Map)
 import Data.Set (Set)
 import Data.Unit
 import Data.Ord
+import Data.Newtype
+
+import Utils.Free
+
 import Control.Alt (class Alt)
 import Control.Plus (class Plus, empty)
 import Control.Alternative (class Alternative)
 import Control.MonadZero (class MonadZero)
 import Type.Proxy
-
-import Data.Functor
-import Control.Applicative
-import Control.Monad
-import Control.Monad.Trans.Class
-
-newtype Fix f = Fix (f (Fix f))
-data Free f r = Free (f (Free f r)) | Pure r
-
-instance freeShow :: (Show a, Show (f (Free f a))) => Show ((Free f) a) where
-    show (Free x) = "Free " <> show x
-    show (Pure x) = "Pure " <> show x
-
-instance freeFunctor :: (Functor f) => Functor (Free f) where
-    map f x = x >>= f >>> Pure
-
-instance freeApplicative :: (Functor f) => Applicative (Free f) where
-    pure = Pure
-
-instance freeApply :: (Functor f) => Apply (Free f) where
-    apply = ap
-
-instance freeBind :: (Functor f) => Bind (Free f) where
-    bind (Free x) f = Free $ map (_ >>= f) x
-    bind (Pure x) f = f x
-
-liftF :: forall f r. Functor f => f r -> Free f r
-liftF x = Free (map Pure x)
-
-instance freeMonad :: (Functor f) => Monad (Free f)
-
-instance freeMonadTrans :: MonadTrans Free where
-    lift = liftF
 
 data AbsOrRel location = Absolute location | Relative location
 instance absOrRelShow :: (Show location) => Show (AbsOrRel location) where
@@ -69,56 +40,56 @@ data PreconditionNext location piece next
     | PositionsEqual (AbsOrRel location) (AbsOrRel location) (Boolean -> next)
     | Failure
 
-derive instance preconditionFunctor :: Functor (PreconditionNext location piece)
-instance preconditionShow :: (Show location, Show piece) 
+derive instance preconditionNextFunctor :: Functor (PreconditionNext location piece)
+instance preconditionNextShow :: (Show location, Show piece) 
                           => Show (PreconditionNext location piece next) where
-    show (NeverMoved x _) = "NeverMoved " <> show x
-    show (AtPiece x _) = "AtPiece " <> show x
-    show (UnthreatenedLocation x _) = "UnthreatenedLocation " <> show x
-    show (UnthreatenedPiece x _) = "UnthreatenedPiece " <> show x
-    show (OccupiedBy x _) = "OccupiedBy " <> show x
-    show (MovementHistoryComplete _) = "MovementHistoryComplete"
-    show (MovementHistoryPiece x _) = "MovementHistoryPiece " <> show x
-    show (PositionsEqual x y _) = "PositionsEqual " <> show x <> " " <> show y
+    show (NeverMoved x _) = "NeverMoved " <> show x <> " (and a function)"
+    show (AtPiece x _) = "AtPiece " <> show x <> " (and a function)"
+    show (UnthreatenedLocation x _) = "UnthreatenedLocation " <> show x <> " (and a function)"
+    show (UnthreatenedPiece x _) = "UnthreatenedPiece " <> show x <> " (and a function)"
+    show (OccupiedBy x _) = "OccupiedBy " <> show x <> " (and a function)"
+    show (MovementHistoryComplete _) = "MovementHistoryComplete" <> " (and a function)"
+    show (MovementHistoryPiece x _) = "MovementHistoryPiece " <> show x <> " (and a function)"
+    show (PositionsEqual x y _) = "PositionsEqual " <> show x <> " " <> show y <> " (and a function)"
     show Failure = "Failure"
 
-type Precondition location piece = Free (PreconditionNext location piece) Boolean
-instance freePreconditionAlt :: Alt (Free (PreconditionNext location piece)) where
+newtype Precondition location piece a = Precondition (Free (PreconditionNext location piece) a)
+derive instance preconditionNewtype :: Newtype (Precondition location piece a) _
+type Pre location piece = Precondition location piece Boolean
+
+liftPre :: forall location piece a. 
+           (PreconditionNext location piece a) -> Precondition location piece a
+liftPre = Precondition <<< liftF
+
+instance preconditionFunctor :: Functor (Precondition location piece) where
+    map f = wrap <<< map f <<< unwrap
+instance preconditionApply :: Apply (Precondition location piece) where
+    apply (Precondition (Free Failure)) _ = wrap $ Free Failure
+    apply _ (Precondition (Free Failure)) = wrap $ Free Failure
+    apply x y                             = wrap $ apply (unwrap x) (unwrap y)
+instance preconditionBind :: Bind (Precondition location piece) where
+    bind (Precondition (Free Failure)) _ = wrap $ Free Failure
+    bind x f                             = wrap $ bind (unwrap x) (unwrap <<< f)
+instance preconditionApplicative :: Applicative (Precondition location piece) where
+    pure = Precondition <<< Pure
+instance preconditionMonad :: Monad (Precondition location piece)
+
+instance preconditionAlt :: Alt (Precondition location piece) where
     alt = (*>)
-instance freePreconditionPlus :: Plus (Free (PreconditionNext location piece)) where
+instance preconditionPlus :: Plus (Precondition location piece) where
     empty = failure
-instance freePreconditionAlternative :: Alternative (Free (PreconditionNext location piece))
-instance freePreconditionMonadZero :: MonadZero (Free (PreconditionNext location piece))
+instance preconditionAlternative :: Alternative (Precondition location piece)
+instance preconditionMonadZero :: MonadZero (Precondition location piece)
 
-toFreeJoin0 :: forall f. (Functor f) 
-           => (Unit -> f Unit) -> Free f Unit
-toFreeJoin0 constructor = liftF $ constructor unit
-
-toFreeJoin1 :: forall a f. (Functor f) 
-           => (a -> Unit -> f Unit) -> a -> Free f Unit
-toFreeJoin1 constructor value = liftF $ constructor value unit
-
-toFreeBind0 :: forall b f. (Functor f) 
-            => ((b -> b) -> f b) -> Free f b
-toFreeBind0 constructor = liftF $ constructor identity
-
-toFreeBind1 :: forall a1 b f. (Functor f) 
-            => (a1 -> (b -> b) -> f b) -> a1 -> Free f b
-toFreeBind1 constructor v1 = liftF $ constructor v1 identity
-
-toFreeBind2 :: forall a1 a2 b f. (Functor f) 
-            => (a1 -> a2 -> (b -> b) -> f b) -> a1 -> a2 -> Free f b
-toFreeBind2 constructor v1 v2 = liftF $ constructor v1 v2 identity
-
-neverMoved = toFreeBind1 NeverMoved
-atPiece = toFreeBind1 AtPiece
-unthreatenedLocation = toFreeBind1 UnthreatenedLocation
-unthreatenedPiece = toFreeBind1 UnthreatenedPiece
-occupiedBy = toFreeBind1 OccupiedBy
-movementHistoryComplete = toFreeBind0 MovementHistoryComplete
-movementHistoryPiece = toFreeBind1 MovementHistoryPiece
-positionsEqual = toFreeBind2 PositionsEqual
-failure = liftF Failure
+neverMoved              = wrap <<< toFreeBind1 NeverMoved
+atPiece                 = wrap <<< toFreeBind1 AtPiece
+unthreatenedLocation    = wrap <<< toFreeBind1 UnthreatenedLocation
+unthreatenedPiece       = wrap <<< toFreeBind1 UnthreatenedPiece
+occupiedBy              = wrap <<< toFreeBind1 OccupiedBy
+movementHistoryComplete = wrap   $ toFreeBind0 MovementHistoryComplete
+movementHistoryPiece    = wrap <<< toFreeBind1 MovementHistoryPiece
+positionsEqual x        = wrap <<< toFreeBind1 (PositionsEqual x)
+failure                 = wrap $ liftF Failure
 
 try :: forall m a. (MonadZero m) => Maybe a -> m a
 try Nothing  = empty
@@ -132,11 +103,12 @@ data GameAction location piece
 
 data QuickMoveSpec location piece
     = Finally (Array (GameAction location piece))
-              (Precondition location piece)
-    | Require (Precondition location piece)
+              (Pre location piece)
+    | Require (Pre location piece)
               (QuickMoveSpec location piece)
     | Choice (Array (QuickMoveSpec location piece))
     | Sequence (QuickMoveSpec location piece) (QuickMoveSpec location piece)
+    | Repeat (QuickMoveSpec location piece)
 
 data GameState location piece board
     = GameState { history :: (Array (GameStep location piece))
