@@ -26,7 +26,7 @@ instance absOrRelShow :: (Show location) => Show (AbsOrRel location) where
     show (Relative l) = "Rel " <> show l
 
 data MovementEvent location piece = MovementEvent location piece Int
-instance movementEventShow :: (Show location, Show piece) 
+instance movementEventShow :: (Show location, Show piece)
                            => Show (MovementEvent location piece) where
     show (MovementEvent l p i) = "MovementEvent " <> show l <> " " <> show p <> " " <> show i
 
@@ -42,7 +42,7 @@ data PreconditionNext location piece next
     | Failure
 
 derive instance preconditionNextFunctor :: Functor (PreconditionNext location piece)
-instance preconditionNextShow :: (Show location, Show piece) 
+instance preconditionNextShow :: (Show location, Show piece)
                           => Show (PreconditionNext location piece next) where
     show (NeverMoved x _) = "NeverMoved " <> show x <> " (and a function)"
     show (AtPiece x _) = "AtPiece " <> show x <> " (and a function)"
@@ -122,42 +122,42 @@ data QuickMoveSpec location piece
       -- Repeat the action until it fails
     | Repeat (QuickMoveSpec location piece)
 
-while 
-    :: forall location piece. 
+while
+    :: forall location piece.
        Pre location piece -> QuickMoveSpec location piece -> QuickMoveSpec location piece
 while cond action = Repeat (Require cond action)
 
-locEmpty 
-    :: forall location piece. (Eq piece) => 
+locEmpty
+    :: forall location piece. (Eq piece) =>
        AbsOrRel location -> Pre location piece
 locEmpty loc = (_ == Nothing) <$> occupiedBy loc
 
-repeatMove 
-    :: forall location piece. (Eq piece) => 
+repeatMove
+    :: forall location piece. (Eq piece) =>
        piece -> AbsOrRel location -> QuickMoveSpec location piece
 repeatMove self location = Repeat $ passiveMoveOnly self location
 
 passiveMoveOnly
-    :: forall location piece. (Eq piece) => 
+    :: forall location piece. (Eq piece) =>
        piece -> AbsOrRel location -> QuickMoveSpec location piece
 passiveMoveOnly self location
     = Require (locEmpty location) (Finally [Move self location] $ pure true)
 
 attackMoveOnly
-    :: forall location name team. (Eq team) => 
+    :: forall location name team. (Eq team) =>
        Piece name team -> AbsOrRel location -> QuickMoveSpec location (Piece name team)
-attackMoveOnly self location 
+attackMoveOnly self location
     = Require (occupiedBy location >>= try >>= \occupant -> pure $ team occupant /= team self)
               (Finally [Clear location, Move self location] $ pure true)
 
-passiveOrAttackMove 
-    :: forall location name team. (Eq team) => 
+passiveOrAttackMove
+    :: forall location name team. (Eq team) =>
        Piece name team -> AbsOrRel location -> QuickMoveSpec location (Piece name team)
-passiveOrAttackMove self location 
+passiveOrAttackMove self location
     = Finally [Clear location, Move self location] $ pure true
 
 repeatMoveUntilMaybeAttack
-    :: forall location name team. (Eq team) => (Eq name) => 
+    :: forall location name team. (Eq team) => (Eq name) =>
        Piece name team -> AbsOrRel location -> QuickMoveSpec location (Piece name team)
 repeatMoveUntilMaybeAttack self location
     = Sequence (repeatMove self location) $ Optionally (attackMoveOnly self location)
@@ -166,7 +166,7 @@ data GameState location piece board
     = GameState { history :: (Array (GameStep location piece))
                 , state :: Map piece location
                 }
-data GameStep location piece 
+data GameStep location piece
     = GameStep { actions :: Array (GameAction location piece)
                , inCheck :: Boolean
                }
@@ -185,14 +185,14 @@ id (Piece n t i) = i
 instance eqPiece :: (Eq name, Eq team) => Eq (Piece name team) where
     eq (Piece n1 t1 i) (Piece n2 t2 j) = n1 == n2 && t1 == t2 && i == j
 
-sameType :: forall name team. 
-            (Eq name) => (Eq team) => 
+sameType :: forall name team.
+            (Eq name) => (Eq team) =>
             Piece name team -> Piece name team -> Boolean
 sameType (Piece n1 t1 _) (Piece n2 t2 _) = n1 == n2 && t1 == t2
 
 data State piece board = State
 
 class IsPiece slot name team location | name -> name team location where
-    toMoveSpec :: (Eq name) => (Eq team) => 
+    toMoveSpec :: (Eq name) => (Eq team) =>
                   slot -> (Piece name team) -> QuickMoveSpec location (Piece name team)
     initialState :: slot -> Array (Tuple (Piece name team) location)
