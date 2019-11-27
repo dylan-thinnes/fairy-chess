@@ -1,6 +1,6 @@
 module Vanilla.Pieces where
 
-import Movement
+import Pieces
 import Locations
 import Prelude
 import Data.Tuple

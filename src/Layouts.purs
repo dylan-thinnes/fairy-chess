@@ -1,7 +1,7 @@
 module Layouts where
 
 import Boards
-import Movement
+import Pieces
 
 import Data.Maybe
 import Data.Tuple (Tuple)

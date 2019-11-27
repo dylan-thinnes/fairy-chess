@@ -1,4 +1,4 @@
-module Movement where
+module Pieces where
 
 import Prelude
 
