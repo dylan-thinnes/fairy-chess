@@ -1,7 +1,7 @@
-module Layouts where
+module Glade.Layouts where
 
-import Boards
-import Pieces
+import Glade.Boards
+import Glade.Pieces
 
 import Data.Maybe
 import Data.Tuple (Tuple)

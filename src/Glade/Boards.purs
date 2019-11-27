@@ -1,6 +1,6 @@
-module Boards where
+module Glade.Boards where
 
-import Locations
+import Glade.Locations
 
 import Data.Maybe
 

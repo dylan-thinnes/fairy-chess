@@ -1,7 +1,7 @@
 module Vanilla.Pieces where
 
-import Pieces
-import Locations
+import Glade.Pieces
+import Glade.Locations
 import Prelude
 import Data.Tuple
 import Data.Maybe

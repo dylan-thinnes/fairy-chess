@@ -1,4 +1,4 @@
-module Locations where
+module Glade.Locations where
 
 import Prelude
 import Data.Newtype

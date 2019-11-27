@@ -1,4 +1,4 @@
-module Pieces where
+module Glade.Pieces where
 
 import Prelude
 
@@ -12,7 +12,7 @@ import Data.Ord
 import Data.Newtype
 
 import Utils.Free
-import Locations
+import Glade.Locations
 
 import Control.Alt (class Alt)
 import Control.Plus (class Plus, empty)
