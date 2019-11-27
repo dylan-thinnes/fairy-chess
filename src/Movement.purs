@@ -20,11 +20,6 @@ import Control.Alternative (class Alternative)
 import Control.MonadZero (class MonadZero)
 import Type.Proxy
 
-data AbsOrRel location = Absolute location | Relative location
-instance absOrRelShow :: (Show location) => Show (AbsOrRel location) where
-    show (Absolute l) = "Abs " <> show l
-    show (Relative l) = "Rel " <> show l
-
 data MovementEvent location piece = MovementEvent location piece Int
 instance movementEventShow :: (Show location, Show piece)
                            => Show (MovementEvent location piece) where

@@ -4,6 +4,11 @@ import Prelude
 import Data.Newtype
 import Data.Foldable
 
+data AbsOrRel location = Absolute location | Relative location
+instance absOrRelShow :: (Show location) => Show (AbsOrRel location) where
+    show (Absolute l) = "Abs " <> show l
+    show (Relative l) = "Rel " <> show l
+
 data D2 = D2 { x :: Int, y :: Int }
 instance showD2 :: Show D2 where
     show (D2 { x, y }) = "D2 " <> show x <> " " <> show y
