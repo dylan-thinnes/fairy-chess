@@ -61,14 +61,14 @@ component =
     initialState _ = { board: startingBoard, active: Nothing, movedPieces: S.empty }
 
     render :: State -> H.ComponentHTML Action () m
-    render state = HH.div [] [htmlBoard]
+    render state = HH.div [HP.class_ $ HH.ClassName "board-container"] [htmlBoard]
         where
         -- dimensions
         boardHeight = length state.board
         boardWidth  = maybe 0 length $ state.board !! 0
 
         -- IDs for each row / column
-        rowIds    = guard (boardHeight > 0) *> (0..(boardHeight-1))
+        rowIds    = guard (boardHeight > 0) *> ((boardHeight-1)..0)
         columnIds = guard (boardWidth > 0)  *> (0..(boardWidth-1))
 
         -- Generate a rowEdge from an id, convert id to letter

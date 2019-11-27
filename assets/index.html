@@ -29,6 +29,16 @@
     margin: 0;
 }
 
+body {
+    height: 100vh;
+}
+.board-container {
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
 .tile {
     height: 50px;
     width: 50px;
@@ -70,6 +80,29 @@
 }
 .tile.selected {
     background-color: #88d !important;
+}
+
+.chess-board {
+    display: inline-block;
+}
+
+/* Rotation */
+.chess-board,
+.chess-board .bottom-edge-piece, 
+.chess-board .left-edge-piece,
+.chess-board .tile img {
+    transition: transform 1s ease-in-out 0s;
+}
+
+.chess-board.rot {
+    transform: rotate(180deg);
+}
+
+.chess-board.rot .bottom-edge-piece, 
+.chess-board.rot .left-edge-piece,
+.chess-board.rot .tile img {
+    transition: transform 1s ease-in-out 0s;
+    transform: rotate(-180deg);
 }
 </style>
   </body>
