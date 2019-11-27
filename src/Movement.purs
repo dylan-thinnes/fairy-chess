@@ -192,7 +192,7 @@ sameType (Piece n1 t1 _) (Piece n2 t2 _) = n1 == n2 && t1 == t2
 
 data State piece board = State
 
-class IsPiece slot name team location | name -> name team location where
+class IsPiece slot name team location | slot -> name team location where
     toMoveSpec :: (Eq name) => (Eq team) =>
                   slot -> (Piece name team) -> QuickMoveSpec location (Piece name team)
     initialState :: slot -> Array (Tuple (Piece name team) location)
