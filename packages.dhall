@@ -124,6 +124,20 @@ let upstream =
 let overrides =
       { sized-vectors = ../sized-vectors/v4.0.0/spago.dhall as Location }
 
-let additions = {=}
+let additions =
+      { matryoshka =
+            { dependencies =
+                [ "free"
+                , "fixed-points"
+                , "profunctor"
+                , "prelude"
+                , "transformers"
+                ]
+            , repo =
+                "https://github.com/slamdata/purescript-matryoshka.git"
+            , version =
+                "v0.4.0"
+            }
+      }
 
 in  upstream // overrides // additions

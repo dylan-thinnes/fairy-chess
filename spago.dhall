@@ -8,6 +8,7 @@ You can edit this file as you like.
     [ "console"
     , "effect"
     , "halogen"
+    , "matryoshka"
     , "monad-loops"
     , "profunctor-lenses"
     , "psci-support"
