@@ -10,8 +10,10 @@ import Data.Set (Set)
 import Data.Unit
 import Data.Ord
 import Data.Newtype
+import Data.Either
 
-import Utils.Free
+--import Utils.Free
+import Control.Monad.Free hiding (wrap)
 import Glade.Locations
 
 import Control.Alt (class Alt)
@@ -61,14 +63,18 @@ type Pre location piece = Precondition location piece Boolean
 instance preconditionFunctor :: Functor (Precondition location piece) where
     map f = wrap <<< map f <<< unwrap
 instance preconditionApply :: Apply (Precondition location piece) where
-    apply (Precondition (Free Failure)) _ = wrap $ Free Failure
-    apply _ (Precondition (Free Failure)) = wrap $ Free Failure
-    apply x y                             = wrap $ apply (unwrap x) (unwrap y)
+    apply (Precondition x) (Precondition y) 
+      = case resume x, resume y of
+          Left Failure, _ -> wrap $ liftF Failure
+          _, Left Failure -> wrap $ liftF Failure
+          _, _            -> wrap $ apply x y
 instance preconditionBind :: Bind (Precondition location piece) where
-    bind (Precondition (Free Failure)) _ = wrap $ Free Failure
-    bind x f                             = wrap $ bind (unwrap x) (unwrap <<< f)
+    bind (Precondition x) f
+      = case resume x of
+          Left Failure -> wrap $ liftF Failure
+          _            -> wrap $ bind x (unwrap <<< f)
 instance preconditionApplicative :: Applicative (Precondition location piece) where
-    pure = Precondition <<< Pure
+    pure = Precondition <<< pure
 instance preconditionMonad :: Monad (Precondition location piece)
 
 instance preconditionAlt :: Alt (Precondition location piece) where
@@ -77,6 +83,27 @@ instance preconditionPlus :: Plus (Precondition location piece) where
     empty = failure
 instance preconditionAlternative :: Alternative (Precondition location piece)
 instance preconditionMonadZero :: MonadZero (Precondition location piece)
+
+-- Free Binds & Joins, made simple
+toFreeJoin0 :: forall f. (Functor f) 
+           => (Unit -> f Unit) -> Free f Unit
+toFreeJoin0 constructor = liftF $ constructor unit
+
+toFreeJoin1 :: forall a f. (Functor f) 
+           => (a -> Unit -> f Unit) -> a -> Free f Unit
+toFreeJoin1 constructor value = liftF $ constructor value unit
+
+toFreeBind0 :: forall b f. (Functor f) 
+            => ((b -> b) -> f b) -> Free f b
+toFreeBind0 constructor = liftF $ constructor identity
+
+toFreeBind1 :: forall a1 b f. (Functor f) 
+            => (a1 -> (b -> b) -> f b) -> a1 -> Free f b
+toFreeBind1 constructor v1 = liftF $ constructor v1 identity
+
+toFreeBind2 :: forall a1 a2 b f. (Functor f) 
+            => (a1 -> a2 -> (b -> b) -> f b) -> a1 -> a2 -> Free f b
+toFreeBind2 constructor v1 v2 = liftF $ constructor v1 v2 identity
 
 -- PreconditionNext data constructors turned to Preconditions
 neverMoved              = wrap <<< toFreeBind1 NeverMoved
