@@ -45,7 +45,7 @@ runMirror :: Mirror -> D2 -> Array D2
 runMirror = unwrap
 
 octopize :: D2 -> Array D2
-octopize c@(D2 { x, y }) = unwrap (fold $ map toMirror transforms) c
+octopize c@(D2 { x, y }) = unwrap (foldMap toMirror transforms) c
     where
     transforms | x == 0 && y == 0 = []
                | x == 0           = [mirrorX, mirrorXY]
