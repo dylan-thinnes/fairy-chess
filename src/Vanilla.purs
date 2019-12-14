@@ -1,16 +1,22 @@
-module Vanilla.Pieces where
+module Vanilla where
+
+import Prelude
 
 import Glade.Pieces
 import Glade.Locations
-import Prelude
+import Glade.Boards
+import Glade.Layouts
+import Glade.Games
+
 import Data.Tuple
 import Data.Maybe
 import Data.Array as Array
 import Data.Array ((!!))
 import Data.List
-import Type.Proxy
-import Control.Monad.Loops
+
 import Control.MonadZero (guard)
+
+data Vanilla = Vanilla
 
 data Name = Pawn | Rook | Knight | Bishop | King | Queen
 derive instance eqName :: Eq Name
@@ -26,9 +32,23 @@ derive instance eqTeam :: Eq Team
 teamDirection White = 1
 teamDirection Black = -1
 
-data Vanilla = Vanilla
+instance vanillaGame :: IsGame Vanilla Name Team D2 Unit where
+    customPostconditions _ team = [unthreatenedPiece (Piece King team 1)]
+    evaluatePrecondition _ precond = false
+    performAction _ action state = state
 
-instance vanillaPiece :: IsPiece Vanilla Name Team D2 where
+instance vanillaBoard :: IsBoard Vanilla D2 where
+    simplify proxy loc@(D2 { x, y }) = do
+        guard $ x >= 1 && x <= 8 && y >= 1 && y <= 8
+        pure loc
+
+    unrel proxy (D2 { x: x1, y: y1 }) (D2 { x: x2, y: y2 })
+        = D2 { x: x1 + x2, y: y1 + y2 }
+
+instance vanillaLayout :: IsLayout Vanilla Name Team D2 where
+    isBackRank _ Black (D2 { x, y }) = y == 1
+    isBackRank _ White (D2 { x, y }) = y == 8
+
     initialState _
         = [ Tuple (Piece Pawn   White 1) $ D2 { x: 1, y: 2 }
           , Tuple (Piece Pawn   White 2) $ D2 { x: 2, y: 2 }
@@ -67,6 +87,8 @@ instance vanillaPiece :: IsPiece Vanilla Name Team D2 where
           , Tuple (Piece Rook   Black 2) $ D2 { x: 8, y: 8 }
           ]
 
+
+instance vanillaPiece :: IsPiece Vanilla Name Team D2 where
     toMoveSpec _ self@(Piece name team id)
         = if isPawn name
           then pawn self
