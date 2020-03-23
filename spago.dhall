@@ -12,7 +12,6 @@ You can edit this file as you like.
     , "monad-loops"
     , "profunctor-lenses"
     , "psci-support"
-    , "sized-vectors"
     ]
 , packages =
     ./packages.dhall
