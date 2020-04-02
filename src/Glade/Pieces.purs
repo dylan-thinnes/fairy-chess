@@ -217,4 +217,4 @@ data State piece board = State
 class IsPiece slot name team location | slot -> name team location where
     toMoveSpec :: (Eq name) => (Eq team) =>
                   slot -> (Piece name team) -> QuickMoveSpec location (Piece name team)
-    initialState :: slot -> Array (Tuple (Piece name team) location)
+    -- initialState :: slot -> Array (Tuple (Piece name team) location)

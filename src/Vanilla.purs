@@ -45,6 +45,11 @@ instance vanillaBoard :: IsBoard Vanilla D2 where
     unrel proxy (D2 { x: x1, y: y1 }) (D2 { x: x2, y: y2 })
         = D2 { x: x1 + x2, y: y1 + y2 }
 
+    locations proxy = Just $ Array.fromFoldable $ do
+        x <- 1 .. 8
+        y <- 1 .. 8
+        pure $ D2 { x: x, y: y }
+
 instance vanillaLayout :: IsLayout Vanilla Name Team D2 where
     isBackRank _ Black (D2 { x, y }) = y == 1
     isBackRank _ White (D2 { x, y }) = y == 8

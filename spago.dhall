@@ -6,8 +6,10 @@ You can edit this file as you like.
     "my-project"
 , dependencies =
     [ "console"
+    , "css"
     , "effect"
     , "halogen"
+    , "halogen-css"
     , "matryoshka"
     , "monad-loops"
     , "profunctor-lenses"
